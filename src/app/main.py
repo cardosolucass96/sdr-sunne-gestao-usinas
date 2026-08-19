@@ -556,7 +556,7 @@ def create_app() -> FastAPI:
         )
 
     app.state.settings = settings
-    app.include_router(build_api_router(include_internal_routes=not is_production))
+    app.include_router(build_api_router(include_internal_routes=True))
     return app
 
 

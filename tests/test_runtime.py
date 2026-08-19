@@ -336,7 +336,7 @@ def test_production_rejects_disabled_webhook_signature_validation(
             pass
 
 
-def test_production_hides_internal_routes_and_api_documentation(
+def test_production_hides_api_documentation_but_keeps_playground_chat(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setenv("APP_ENV", "production")
@@ -347,8 +347,8 @@ def test_production_hides_internal_routes_and_api_documentation(
 
     with TestClient(create_app()) as client:
         assert client.get("/health").status_code == 200
-        assert client.post("/chat", json={"thread_id": "test", "message": "oi"}).status_code == 404
-        assert client.get("/threads/test/state").status_code == 404
+        assert client.get("/playground").status_code == 200
+        assert client.post("/chat", json={}).status_code == 422
         assert client.get("/docs").status_code == 404
         assert client.get("/redoc").status_code == 404
         assert client.get("/openapi.json").status_code == 404
