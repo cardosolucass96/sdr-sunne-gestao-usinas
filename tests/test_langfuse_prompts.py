@@ -118,6 +118,10 @@ def test_build_langchain_chat_prompt_uses_local_fallback_when_langfuse_is_disabl
     assert prompt.labels == ["production"]
     assert template.metadata["langfuse_prompt"] is prompt
     assert "latest_user_message" in template.input_variables
+    assert "current_profile" in template.input_variables
+    assert "current_journey_state" in template.input_variables
+    assert "known_fields" in template.input_variables
+    assert "resume_context" in template.input_variables
 
 
 def test_responder_prompt_template_preserves_message_placeholder(

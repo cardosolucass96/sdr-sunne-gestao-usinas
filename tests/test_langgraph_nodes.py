@@ -82,7 +82,9 @@ def test_classify_intent_returns_structured_update(monkeypatch) -> None:
 
     class FakeClassifierChain:
         def invoke(self, payload, config=None):
-            assert payload == {"latest_user_message": "Oi, tudo bem?"}
+            assert payload["latest_user_message"] == "Oi, tudo bem?"
+            assert payload["current_profile"] == "unknown"
+            assert payload["current_journey_state"] == "E0"
             assert config == expected_config
             return IntentClassification(
                 intent="greeting",
@@ -145,6 +147,7 @@ def test_classify_intent_transitions_from_triage_with_investidor_hint() -> None:
             return IntentClassification(
                 intent="question",
                 reason="Lead relata interesse em investir.",
+                profile="investidor",
             )
 
     payload = {"messages": [HumanMessage(content="Quero investir em uma usina solar.")]}
@@ -165,6 +168,7 @@ def test_classify_intent_reclassifies_owner_profile_without_reset() -> None:
             return IntentClassification(
                 intent="question",
                 reason="Lead corrigiu para ter usina instalada.",
+                profile="proprietario",
             )
 
     state = {
@@ -196,6 +200,11 @@ def test_classify_intent_marks_compliance_as_handoff_ready() -> None:
             return IntentClassification(
                 intent="question",
                 reason="Lead perguntou retorno financeiro.",
+                profile="investidor",
+                compliance_violation=(
+                    "Pergunta de custo/retorno/valores identificada. "
+                    "Responder com padrão de escalonamento para o consultor."
+                ),
             )
 
     state = {
@@ -253,12 +262,26 @@ def test_classify_intent_does_not_skip_triage_and_infers_profile_after_two_touch
 
 
 def test_classify_intent_scores_investor_after_motivation_and_capital_flow() -> None:
-    class FakeClassifierChain:
-        def invoke(self, payload, config=None):
+    def _classification_for(message: str) -> IntentClassification:
+        if "60000" in message or "valor" in message:
             return IntentClassification(
                 intent="question",
                 reason="Fluxo investidor em progresso.",
+                profile="investidor",
+                motivacao="proteger_patrimonio",
+                capital_faixa="60000",
+                score="B",
             )
+        return IntentClassification(
+            intent="question",
+            reason="Fluxo investidor em progresso.",
+            profile="investidor",
+            motivacao="renda_mensal",
+        )
+
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return _classification_for(payload["latest_user_message"])
 
     state = {
         "messages": [HumanMessage(content="quero investir em usina")],
@@ -306,6 +329,7 @@ def test_reclassificando_investidor_para_proprietario_limpa_score_e_campos_antig
             return IntentClassification(
                 intent="question",
                 reason="Perfil mudou para proprietário.",
+                profile="proprietario",
             )
 
     state = {
@@ -333,7 +357,57 @@ def test_reclassificando_investidor_para_proprietario_limpa_score_e_campos_antig
     assert result["journey_state"] in {"E2a", "E2b", "E6"}
     assert result["score"] is None
     assert "motivation" not in result
-    assert result["disposition"] != "handoff_due_to_compliance"
+    assert result.get("disposition") != "handoff_due_to_compliance"
+
+
+def test_classify_intent_does_not_infer_profile_or_gates_from_message_text() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Sem extração nesta rodada.",
+            )
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+        result = intent_nodes.classify_intent(
+            {
+                "messages": [HumanMessage(content="Já tenho uma usina instalada.")],
+                "profile": "unknown",
+                "journey_state": "E0",
+            }
+        )
+
+    assert result["profile"] == "unknown"
+    assert result["journey_state"] == "E1"
+    assert result.get("homologada") is None
+    assert result.get("exclusividade") is None
+    assert result.get("compliance_violation") is None
+
+
+def test_classify_intent_does_not_flag_compliance_from_keywords() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Lead falou em locar a usina.",
+                profile="proprietario",
+            )
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+        result = intent_nodes.classify_intent(
+            {
+                "messages": [HumanMessage(content="Quero locar minha usina. Qual o retorno?")],
+                "profile": "investidor",
+                "journey_state": "E2a",
+            }
+        )
+
+    assert result["profile"] == "proprietario"
+    assert result["journey_state"] == "E2b"
+    assert result.get("compliance_violation") is None
+    assert result.get("disposition") != "handoff_due_to_compliance"
 
 
 def test_respond_appends_ai_message(monkeypatch) -> None:
@@ -842,7 +916,9 @@ def test_classify_intent_retries_without_temperature(monkeypatch) -> None:
 
         def invoke(self, payload, config=None):
             calls.append(self.should_fail)
-            assert payload == {"latest_user_message": "Oi, tudo bem?"}
+            assert payload["latest_user_message"] == "Oi, tudo bem?"
+            assert payload["current_profile"] == "unknown"
+            assert payload["current_journey_state"] == "E0"
             assert config == {"callbacks": ["trace"]}
             if self.should_fail:
                 raise _unsupported_temperature_error()
