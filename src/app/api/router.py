@@ -3,9 +3,9 @@ from fastapi import APIRouter
 from app.api.routes import (
     chat_router,
     conversations_router,
-    playground_router,
     generated_audio_router,
     ops_router,
+    playground_router,
     threads_router,
     webhooks_router,
 )

@@ -407,9 +407,7 @@ def _detect_compliance_violation(message: str) -> str | None:
             "Responder com padrão de escalonamento para o consultor."
         )
 
-    if any(
-        keyword in normalized for keyword in ("procon", "advogado", *_COMPLIANCE_LEGAL)
-    ):
+    if any(keyword in normalized for keyword in ("procon", "advogado", *_COMPLIANCE_LEGAL)):
         return "Questão jurídica/regulatória identificada. Escalonar para consultor."
 
     return None
@@ -506,13 +504,8 @@ def _has_minimum_owner_data(owner_fields: dict[str, Any], state: AgentState) -> 
     if owner_fields["exclusividade"] is None and state.get("exclusividade") is True:
         return False
 
-    has_power = (
-        owner_fields["potencia_kwp"] is not None
-        or state.get("potencia_kwp") is not None
-    )
-    has_operation_date = (
-        owner_fields["data_operacao"] is not None or state.get("data_operacao")
-    )
+    has_power = owner_fields["potencia_kwp"] is not None or state.get("potencia_kwp") is not None
+    has_operation_date = owner_fields["data_operacao"] is not None or state.get("data_operacao")
     has_idle_capacity = (
         owner_fields["capacidade_ociosa_pct"] is not None
         or state.get("capacidade_ociosa_pct") is not None
@@ -741,9 +734,7 @@ def _handoff_package_text(
     lead_name = state.get("lead_name") or "-"
     lead_origin = state.get("lead_origin") or "-"
     next_step = (
-        "encerrado com registro"
-        if (profile == "fora_de_escopo")
-        else "agendar com consultor"
+        "encerrado com registro" if (profile == "fora_de_escopo") else "agendar com consultor"
     )
     objection = disposition or "-"
     return " | ".join(

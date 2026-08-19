@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.agent.state import JourneyState, LeadProfile, LeadScore, IntentType
+from app.agent.state import IntentType, JourneyState, LeadProfile, LeadScore
 
 
 class IntentClassification(BaseModel):
