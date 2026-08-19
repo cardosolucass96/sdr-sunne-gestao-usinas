@@ -147,6 +147,39 @@ def _latest_user_message(state: AgentState) -> str:
     return latest_user_message(state)
 
 
+def _build_journey_payload(state: AgentState) -> dict[str, str]:
+    return {
+        "journey_state": str(state.get("journey_state") or "E0"),
+        "profile": str(state.get("profile") or "unknown"),
+        "score": str(state.get("score") or "N/A"),
+        "journey_status": str(state.get("journey_status") or "-"),
+        "disposition": str(state.get("disposition") or "-"),
+        "transition_reason": str(state.get("transition_reason") or "-"),
+        "out_of_scope_reason": str(state.get("out_of_scope_reason") or "-"),
+        "handoff_reason": str(state.get("handoff_reason") or "-"),
+        "compliance_violation": str(state.get("compliance_violation") or "-"),
+        "handoff_package": str(state.get("handoff_package") or "-"),
+        "lead_name": str(state.get("lead_name") or "-"),
+        "lead_origin": str(state.get("lead_origin") or "-"),
+    }
+
+
+def _journey_snapshot(state: AgentState) -> str:
+    context = _build_journey_payload(state)
+    return (
+        "Evidencias resumidas da jornada:\n"
+        f"Estado: {context['journey_state']} | Perfil: {context['profile']} |\n"
+        f"Status interno: {context['journey_status']}\n"
+        f"Score: {context['score']}\n"
+        f"Disposicao: {context['disposition']} | Transicao: {context['transition_reason']}\n"
+        f"Lead: {context['lead_name']} | Origem: {context['lead_origin']}\n"
+        "Motivo de handoff: "
+        f"{context['handoff_reason']} | Compliance: {context['compliance_violation']}\n"
+        f"Fora de escopo: {context['out_of_scope_reason']}\n"
+        f"Pacote: {context['handoff_package']}"
+    )
+
+
 def _response_to_text(response: Any) -> str:
     if isinstance(response, BaseMessage):
         return message_to_text(response)
@@ -321,6 +354,8 @@ def respond(
 
     available_media = _get_available_media_prompt_view()
     resume_context = str(state.get("resume_context") or "").strip()
+    journey_payload = _build_journey_payload(state)
+    journey_snapshot = _journey_snapshot(state)
     conversation_history = _conversation_history_with_delivery_context(
         list(state.get("messages", [])),
         available_media=available_media,
@@ -334,6 +369,19 @@ def respond(
             "specialist_result": state.get("specialist_result"),
             "specialist_context": _specialist_context(state),
             "resume_context": resume_context or "No additional resume context.",
+            "journey_state": journey_payload["journey_state"],
+            "profile": journey_payload["profile"],
+            "score": journey_payload["score"],
+            "journey_status": journey_payload["journey_status"],
+            "disposition": journey_payload["disposition"],
+            "transition_reason": journey_payload["transition_reason"],
+            "out_of_scope_reason": journey_payload["out_of_scope_reason"],
+            "handoff_reason": journey_payload["handoff_reason"],
+            "compliance_violation": journey_payload["compliance_violation"],
+            "handoff_package": journey_payload["handoff_package"],
+            "lead_name": journey_payload["lead_name"],
+            "lead_origin": journey_payload["lead_origin"],
+            "journey_snapshot": journey_snapshot,
             "response_style": _get_response_style(),
             "available_media": available_media,
         },

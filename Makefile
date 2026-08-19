@@ -32,7 +32,7 @@ staging:
 	./scripts/run_staging_stack.sh
 
 staging-app:
-	$(UVICORN) app.main:app --env-file .env.staging $(if $(wildcard .env.staging.local),--env-file .env.staging.local) --reload --reload-include '.env*'
+	$(UVICORN) --app-dir src app.main:app --env-file .env.staging $(if $(wildcard .env.staging.local),--env-file .env.staging.local) --reload --reload-include '.env*'
 
 prod: compose-up
 

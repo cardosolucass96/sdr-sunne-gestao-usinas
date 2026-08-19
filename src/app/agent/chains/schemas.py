@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
-from app.agent.state import IntentType
+from app.agent.state import JourneyState, LeadProfile, LeadScore, IntentType
 
 
 class IntentClassification(BaseModel):
@@ -11,6 +11,31 @@ class IntentClassification(BaseModel):
     requires_specialist: bool = False
     specialist_name: str | None = None
     specialist_reason: str | None = None
+    profile: LeadProfile | None = None
+    journey_state: JourneyState | None = None
+    score: LeadScore | None = None
+    disposition: str | None = None
+    out_of_scope_reason: str | None = None
+    handoff_reason: str | None = None
+    compliance_violation: str | None = None
+    lead_contact_gap: int = 0
+    lead_name: str | None = None
+    lead_origin: str | None = None
+    journey_status: str | None = None
+    motivacao: str | None = None
+    estagio_decisao: str | None = None
+    capital_faixa: str | None = None
+    origem_recurso: str | None = None
+    horizonte: str | None = None
+    horizonte_decisao: str | None = None
+    pf_pj: str | None = None
+    homologada: bool | None = None
+    exclusividade: bool | None = None
+    concessionaria: str | None = None
+    cidade_uf: str | None = None
+    potencia_kwp: float | int | None = None
+    data_operacao: str | None = None
+    capacidade_ociosa_pct: float | int | None = None
 
 
 class OutboundMediaChoice(BaseModel):

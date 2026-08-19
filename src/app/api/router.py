@@ -3,6 +3,7 @@ from fastapi import APIRouter
 from app.api.routes import (
     chat_router,
     conversations_router,
+    playground_router,
     generated_audio_router,
     ops_router,
     threads_router,
@@ -15,6 +16,7 @@ def build_api_router(*, include_internal_routes: bool = True) -> APIRouter:
     router.include_router(ops_router)
     router.include_router(generated_audio_router)
     router.include_router(conversations_router)
+    router.include_router(playground_router)
     if include_internal_routes:
         router.include_router(chat_router)
         router.include_router(threads_router)

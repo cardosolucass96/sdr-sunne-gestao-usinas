@@ -1,8 +1,8 @@
 """Generated from .agent.json. Do not edit manually."""
 
 AGENT_DEFAULTS: dict[str, object] = {
-    "app_name": "SDR Agent Template",
-    "app_slug": "sdr-agent-template",
+    "app_name": "SDR Sunne Gestão de Usinas",
+    "app_slug": "sdr-sunne-gestao-usinas",
     "pipefacil_timeout_seconds": 20.0,
     "pipefacil_media_max_bytes": 25000000,
     "pipefacil_webhook_idempotency_ttl_seconds": 86400,
@@ -31,7 +31,7 @@ AGENT_DEFAULTS: dict[str, object] = {
     "elevenlabs_voice_style": 0.35,
     "elevenlabs_voice_use_speaker_boost": True,
     "elevenlabs_voice_speed": 1.0,
-    "openai_model": "gpt-5.3-chat-latest",
+    "openai_model": "gpt-5.6-luna",
     "openai_transcription_model": "gpt-4o-mini-transcribe",
     "openai_specialists_enabled": False,
     "openai_specialist_model": None,

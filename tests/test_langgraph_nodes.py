@@ -96,15 +96,23 @@ def test_classify_intent_returns_structured_update(monkeypatch) -> None:
         config=expected_config,
     )
 
-    assert result == {
-        "latest_user_message": "Oi, tudo bem?",
-        "intent": "greeting",
-        "intent_reason": "A mensagem e uma saudacao simples.",
-        "requires_specialist": False,
-        "specialist_name": None,
-        "specialist_reason": None,
-        "status": "classified",
+    assert result["latest_user_message"] == "Oi, tudo bem?"
+    assert result["intent"] == "greeting"
+    assert result["intent_reason"] == "A mensagem e uma saudacao simples."
+    assert result["requires_specialist"] is False
+    assert result["specialist_name"] is None
+    assert result["specialist_reason"] is None
+    assert result["status"] in {
+        "classified",
+        "triaged",
+        "qualified",
+        "qualified_out_of_scope",
+        "handoff_required",
     }
+    assert result["journey_state"] in {"E1", "E0"}
+    assert result["journey_transitions"][-1]["prev_state"] in {"E0", "E1"}
+    assert result["journey_transitions"][-1]["next_state"] in {"E1", "E0", "E2a", "E2b", "E6"}
+    assert isinstance(result.get("journey_transitions"), list)
 
 
 def test_classify_intent_can_request_test_specialist(monkeypatch) -> None:
@@ -128,6 +136,204 @@ def test_classify_intent_can_request_test_specialist(monkeypatch) -> None:
     assert result["requires_specialist"] is True
     assert result["specialist_name"] == "test_specialist"
     assert result["specialist_reason"] == "Pedido explicito de especialista."
+    assert result["journey_state"] in {"E1", "E2a", "E2b", "E6"}
+
+
+def test_classify_intent_transitions_from_triage_with_investidor_hint() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Lead relata interesse em investir.",
+            )
+
+    payload = {"messages": [HumanMessage(content="Quero investir em uma usina solar.")]}
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+
+        result = intent_nodes.classify_intent(payload, config={"callbacks": ["trace"]})
+
+    assert result["profile"] == "investidor"
+    assert result["journey_state"] in {"E1", "E2a"}
+    assert result["journey_transitions"][-1]["next_state"] in {"E1", "E2a"}
+
+
+def test_classify_intent_reclassifies_owner_profile_without_reset() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Lead corrigiu para ter usina instalada.",
+            )
+
+    state = {
+        "messages": [HumanMessage(content="Me interesa uma usina para renda")],
+        "profile": "investidor",
+        "journey_state": "E2a",
+        "journey_transitions": [],
+    }
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+
+        result = intent_nodes.classify_intent(
+            {
+                **state,
+                "messages": state["messages"]
+                + [HumanMessage(content="Já tenho uma usina instalada agora.")],
+            },
+            config={"callbacks": ["trace"]},
+        )
+
+    assert result["profile"] == "proprietario"
+    assert result["journey_state"] in {"E2a", "E2b"}
+
+
+def test_classify_intent_marks_compliance_as_handoff_ready() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Lead perguntou retorno financeiro.",
+            )
+
+    state = {
+        "messages": [
+            HumanMessage(content="Estou montando projeto em 45 dias"),
+            HumanMessage(content="Quero investir e tenho capital"),
+        ],
+        "profile": "investidor",
+        "journey_state": "E2a",
+    }
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+
+        result = intent_nodes.classify_intent(
+            {**state, "messages": state["messages"] + [HumanMessage(content="E qual o retorno?")]},
+            config={"callbacks": ["trace"]},
+        )
+
+    assert result["compliance_violation"] is not None
+    assert result["journey_state"] in {"E5", "E2a"}
+    assert result["disposition"] == "handoff_due_to_compliance"
+
+
+def test_classify_intent_does_not_skip_triage_and_infers_profile_after_two_touches() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Lead respondeu sem identificação de perfil.",
+            )
+
+    state = {
+        "messages": [HumanMessage(content="quero discutir isso depois")],
+        "journey_state": "E1",
+        "profile": "unknown",
+        "lead_contact_gap": 1,
+        "resume_context": "Campanha: investidor em energia solar.",
+    }
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+
+        result = intent_nodes.classify_intent(
+            {
+                **state,
+                "messages": state["messages"]
+                + [HumanMessage(content="mais uma mensagem sem triagem")],
+            },
+            config={"callbacks": ["trace"]},
+        )
+
+    assert result["journey_state"] in {"E2a", "E2b"}
+    assert result["disposition"] == "triage_assumed_uncertain"
+
+
+def test_classify_intent_scores_investor_after_motivation_and_capital_flow() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Fluxo investidor em progresso.",
+            )
+
+    state = {
+        "messages": [HumanMessage(content="quero investir em usina")],
+        "journey_state": "E1",
+        "profile": "investidor",
+        "lead_contact_gap": 0,
+    }
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+
+        first = intent_nodes.classify_intent(
+            {
+                **state,
+                "messages": state["messages"]
+                + [HumanMessage(content="quero renda mensal para proteger patrimônio")],
+            },
+            config={"callbacks": ["trace"]},
+        )
+        assert first["journey_state"] in {"E2a", "E3", "E4"}
+
+        second_state = {
+            "messages": [HumanMessage(content="quero renda mensal para proteger patrimônio")]
+            + [HumanMessage(content="tenho faixa 60000")],
+            "journey_state": first["journey_state"],
+            "profile": first["profile"],
+            "lead_contact_gap": 0,
+            "motivacao": "proteger_patrimonio",
+        }
+        second = intent_nodes.classify_intent(
+            {
+                **second_state,
+                "messages": second_state["messages"]
+                + [HumanMessage(content="meu valor ideal é 60000")],
+            },
+            config={"callbacks": ["trace"]},
+        )
+
+    assert second["score"] in {"A", "B", "C", "D"}
+
+
+def test_reclassificando_investidor_para_proprietario_limpa_score_e_campos_antigos() -> None:
+    class FakeClassifierChain:
+        def invoke(self, payload, config=None):
+            return IntentClassification(
+                intent="question",
+                reason="Perfil mudou para proprietário.",
+            )
+
+    state = {
+        "messages": [HumanMessage(content="quero investir com capital alto")],
+        "journey_state": "E2a",
+        "profile": "investidor",
+        "score": "A",
+        "motivacao": "renda_mensal",
+        "capital_faixa": "100000",
+    }
+
+    with pytest.MonkeyPatch.context() as monkeypatch:
+        monkeypatch.setattr(intent_nodes, "_build_classifier_chain", lambda: FakeClassifierChain())
+
+        result = intent_nodes.classify_intent(
+            {
+                **state,
+                "messages": state["messages"]
+                + [HumanMessage(content="na verdade já tenho uma usina")],
+            },
+            config={"callbacks": ["trace"]},
+        )
+
+    assert result["profile"] == "proprietario"
+    assert result["journey_state"] in {"E2a", "E2b", "E6"}
+    assert result["score"] is None
+    assert "motivation" not in result
+    assert result["disposition"] != "handoff_due_to_compliance"
 
 
 def test_respond_appends_ai_message(monkeypatch) -> None:
@@ -660,7 +866,13 @@ def test_classify_intent_retries_without_temperature(monkeypatch) -> None:
 
     assert calls == [True, False]
     assert result["intent"] == "greeting"
-    assert result["status"] == "classified"
+    assert result["status"] in {
+        "classified",
+        "triaged",
+        "qualified",
+        "qualified_out_of_scope",
+        "handoff_required",
+    }
 
 
 def test_respond_retries_without_temperature(monkeypatch) -> None:

@@ -59,7 +59,7 @@ class ElevenLabsAgentConfig(_StrictModel):
 
 
 class OpenAIAgentConfig(_StrictModel):
-    model: str = "gpt-5.3-chat-latest"
+    model: str = "gpt-5.6-luna"
     transcription_model: str = "gpt-4o-mini-transcribe"
     specialists_enabled: bool = False
     specialist_model: str | None = None
