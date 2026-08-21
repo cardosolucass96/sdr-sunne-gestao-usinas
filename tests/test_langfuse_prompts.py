@@ -154,6 +154,23 @@ def test_responder_prompt_defines_hybrid_text_and_audio_policy() -> None:
     assert "Do not repeat the same content in both formats" in system_prompt
 
 
+def test_responder_prompt_prioritizes_contextual_natural_conversation() -> None:
+    definitions = {definition.name: definition for definition in get_prompt_definitions()}
+    responder_prompt = definitions[RESPONDER_PROMPT_NAME].prompt
+
+    assert isinstance(responder_prompt, list)
+    system_prompt = responder_prompt[0]["content"]
+
+    assert "Não use abertura, apresentação ou pergunta fixa palavra por palavra" in system_prompt
+    assert "Se a mensagem atual já responder isso, não pergunte de novo" in system_prompt
+    assert "Faça no máximo uma pergunta por mensagem" in system_prompt
+    assert "Vary the wording" in system_prompt
+    assert "never repeat a handoff script" in system_prompt
+    assert "fixed triage question" not in system_prompt
+    assert "fixed triage message" not in system_prompt
+    assert "Essa conta quem faz é o [Consultor]" not in system_prompt
+
+
 def test_whatsapp_style_prompt_is_defined_as_text_prompt() -> None:
     definitions = {definition.name: definition for definition in get_prompt_definitions()}
 
