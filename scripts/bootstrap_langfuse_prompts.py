@@ -14,8 +14,8 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
-STAGING_LABEL = "staging"
-PRODUCTION_LABEL = "production"
+DEFAULT_STAGING_LABEL = "staging"
+DEFAULT_PRODUCTION_LABEL = "production"
 SOURCE_CONFIG_KEY = "_source"
 
 
@@ -135,6 +135,16 @@ def main() -> int:
         action="store_true",
         help="Also apply the production label to the synchronized staging version.",
     )
+    parser.add_argument(
+        "--staging-label",
+        default=DEFAULT_STAGING_LABEL,
+        help="Langfuse label used as the synchronization source.",
+    )
+    parser.add_argument(
+        "--production-label",
+        default=DEFAULT_PRODUCTION_LABEL,
+        help="Langfuse label applied when promoting the synchronized version.",
+    )
     args = parser.parse_args()
 
     for env_file in args.env_file or []:
@@ -173,7 +183,7 @@ def main() -> int:
             remote_prompt = client.get_prompt(
                 name=definition.name,
                 type=definition.type,
-                label=STAGING_LABEL,
+                label=args.staging_label,
                 cache_ttl_seconds=0,
                 max_retries=0,
             )
@@ -207,7 +217,7 @@ def main() -> int:
                     name=definition.name,
                     type=definition.type,
                     prompt=definition.prompt,
-                    labels=[STAGING_LABEL],
+                    labels=[args.staging_label],
                     config=_source_config(content_hash),
                     commit_message=_commit_message(definition.name),
                 )
@@ -227,7 +237,7 @@ def main() -> int:
                 client.update_prompt(
                     name=definition.name,
                     version=synchronized_version,
-                    new_labels=[PRODUCTION_LABEL],
+                    new_labels=[args.production_label],
                 )
             except Exception as exc:
                 print(

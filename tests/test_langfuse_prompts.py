@@ -430,6 +430,37 @@ def test_prompt_sync_promotes_unchanged_staging_version_manually(
     ]
 
 
+def test_prompt_sync_supports_client_specific_labels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    definitions = {definition.name: definition for definition in get_prompt_definitions()}
+    definition = definitions[WHATSAPP_STYLE_PROMPT_NAME]
+    client = FakePromptSyncClient(SimpleNamespace(prompt=definition.prompt, version=12))
+
+    assert (
+        _run_prompt_sync(
+            monkeypatch,
+            client,
+            extra_args=[
+                "--staging-label",
+                "staging-sunne",
+                "--production-label",
+                "production-sunne",
+                "--promote-production",
+            ],
+        )
+        == 0
+    )
+    assert client.get_calls[0]["label"] == "staging-sunne"
+    assert client.promoted_prompts == [
+        {
+            "name": WHATSAPP_STYLE_PROMPT_NAME,
+            "version": 12,
+            "new_labels": ["production-sunne"],
+        }
+    ]
+
+
 @pytest.mark.parametrize("failure_stage", ["read", "create"])
 def test_prompt_sync_returns_error_for_remote_failures(
     monkeypatch: pytest.MonkeyPatch,

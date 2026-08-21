@@ -40,7 +40,7 @@ jobs:
         run: pytest --cov=app --cov-report=term-missing
 
   sync-langfuse-prompts:
-    name: Sync prompts to Langfuse staging
+    name: Publish prompts to Langfuse production
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     needs: quality
     runs-on: ubuntu-latest
@@ -93,4 +93,8 @@ jobs:
           LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
           LANGFUSE_BASE_URL: ${{ vars.LANGFUSE_BASE_URL }}
           PROMPT_SYNC_COMMIT_SHA: ${{ steps.source.outputs.commit_sha }}
-        run: python scripts/bootstrap_langfuse_prompts.py
+        run: >-
+          python scripts/bootstrap_langfuse_prompts.py
+          --staging-label staging-sunne
+          --production-label production-sunne
+          --promote-production

@@ -71,14 +71,14 @@ de prompt/generation sao omitidos para evitar vazar ou armazenar arquivo bruto n
 
 Script operacional para sincronizar prompts definidos em `src/app/agent/prompts/`.
 
-Ele le a versao `staging` sem cache, normaliza o formato devolvido pelo SDK e cria uma nova
+Ele le uma label de staging sem cache, normaliza o formato devolvido pelo SDK e cria uma nova
 versao somente quando o conteudo canonico mudou. Versoes novas recebem hash SHA-256 e, quando
-disponiveis, repositorio, commit e execucao de origem. A flag `--promote-production` move para
-`production` a versao staging encontrada ou recem-criada.
+disponiveis, repositorio, commit e execucao de origem. A flag `--promote-production` move a
+versao sincronizada para a label informada por `--production-label`.
 
 Depois de um push bem-sucedido para `main`, o CI confirma que o commit ainda e o topo da
-branch e sincroniza automaticamente apenas `staging`. A promocao para producao nunca e
-automatica e continua usando o comando manual abaixo.
+branch, sincroniza `staging-sunne` e promove automaticamente a mesma versao para
+`production-sunne`.
 
 ## Labels de Prompt
 
@@ -101,8 +101,8 @@ Regra operacional:
 2. Garanta que placeholders usados pelo prompt existem no estado ou no input da chain.
 3. Ajuste a chain em `src/app/agent/chains/` se houver nova variavel ou structured output.
 4. Rode os testes de prompt e chain.
-5. Sincronize `staging` localmente quando precisar validar antes do merge; depois do merge em
-   `main`, o CI executa a mesma operacao automaticamente:
+5. Sincronize `staging-sunne` localmente quando precisar validar antes do merge; depois do
+   merge em `main`, o CI sincroniza e publica automaticamente em `production-sunne`:
 
 ```bash
 .venv/bin/python scripts/bootstrap_langfuse_prompts.py \
@@ -111,12 +111,14 @@ Regra operacional:
 ```
 
 6. Valide traces e comportamento no ambiente de desenvolvimento/staging.
-7. Promova explicitamente para `production`:
+7. Para uma promocao manual fora do CI, informe explicitamente as labels:
 
 ```bash
 .venv/bin/python scripts/bootstrap_langfuse_prompts.py \
   --env-file .env.prod \
   --env-file .env.prod.local \
+  --staging-label staging-sunne \
+  --production-label production-sunne \
   --promote-production
 ```
 

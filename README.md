@@ -564,10 +564,10 @@ Prompt bootstrap:
   --env-file .env.staging.local
 ```
 
-The script reads the current `staging` version without cache and creates a new version only
-when canonical content changed. A successful push to `main` runs the same staging-only sync
-after CI quality checks, using the configured GitHub secrets and `LANGFUSE_BASE_URL` variable.
-The workflow records the source commit and never moves the `production` label.
+The script reads the current staging version without cache and creates a new version only when
+canonical content changed. A successful push to `main` runs the sync after CI quality checks,
+using the configured GitHub secrets and `LANGFUSE_BASE_URL` variable, then promotes the same
+version from `staging-sunne` to `production-sunne`. The workflow records the source commit.
 
 Explicit promotion to `production`:
 
@@ -575,6 +575,8 @@ Explicit promotion to `production`:
 .venv/bin/python scripts/bootstrap_langfuse_prompts.py \
   --env-file .env.prod \
   --env-file .env.prod.local \
+  --staging-label staging-sunne \
+  --production-label production-sunne \
   --promote-production
 ```
 
@@ -592,8 +594,8 @@ pre-commit run --all-files
 
 The local `pre-commit` hook runs quick file hygiene checks and Ruff with automatic lint
 fixes followed by formatting. The GitHub Actions CI runs on Python 3.12 with generated-config
-validation, linting, format checking, tests, report-only coverage, and staging prompt sync
-after successful pushes to `main`.
+validation, linting, format checking, tests, report-only coverage, and prompt publication to
+Langfuse production after successful pushes to `main`.
 
 ## AI Development Context
 
