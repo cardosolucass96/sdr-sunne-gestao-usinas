@@ -72,8 +72,11 @@ class ObservabilityAgentConfig(_StrictModel):
 
 class AgentConfig(_StrictModel):
     schema_version: Literal[1] = 1
-    app_name: str = "SDR Agent Template"
-    app_slug: str = Field(default="sdr-agent-template", pattern=r"^[a-z0-9][a-z0-9-]{1,62}$")
+    app_name: str = "SDR Sunne Gestão de Usinas"
+    app_slug: str = Field(
+        default="sdr-sunne-gestao-usinas",
+        pattern=r"^[a-z0-9][a-z0-9-]{1,62}$",
+    )
     pipefacil: PipefacilAgentConfig = Field(default_factory=PipefacilAgentConfig)
     audio: AudioAgentConfig = Field(default_factory=AudioAgentConfig)
     elevenlabs: ElevenLabsAgentConfig = Field(default_factory=ElevenLabsAgentConfig)

@@ -501,12 +501,12 @@ def test_run_agent_records_clean_text_trace_input_and_output(
 
     assert captured_kwargs == [
         {
-            "name": "run-sdr-agent-template",
+            "name": "run-sdr-sunne-gestao-usinas",
             "input": "oi",
             "session_id": None,
             "user_id": None,
-            "tags": ["langgraph", "sdr-agent-template"],
-            "metadata": {"graph": "sdr-agent-template"},
+            "tags": ["langgraph", "sdr-sunne-gestao-usinas"],
+            "metadata": {"graph": "sdr-sunne-gestao-usinas"},
         }
     ]
     assert captured_updates == [{"output": "Oi! Como posso ajudar?"}]

@@ -509,9 +509,7 @@ def _update_flow(
     if next_state in {"E5", "E6"} and disposition is None:
         disposition = "handoff_ready"
 
-    handoff_reason = _handoff_reason(
-        profile, out_of_scope_reason, compliance_violation, owner_gate
-    )
+    handoff_reason = _handoff_reason(profile, out_of_scope_reason, compliance_violation, owner_gate)
     transition = _transition_log_entry(
         prev_state=current_state,
         next_state=next_state,
